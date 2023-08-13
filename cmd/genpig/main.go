@@ -76,7 +76,11 @@ func main() {
 			}
 			return fmt.Sprintf("cfg%s%s", strings.ToTitle(tag.Key), field.Name)
 		})
-		return fmt.Sprintf("pig.cfg%s=genpig.Merge(%s)", field.Name, strings.Join(values, ","))
+
+		merge := lo.Reduce(values, func(agg string, item string, index int) string {
+			return agg + item + ",\n"
+		}, "")
+		return fmt.Sprintf("pig.cfg%s=genpig.Merge(\n%s)", field.Name, merge)
 	})
 
 	genPath := filepath.Join(piggyDir, piggyBaseFileName)
