@@ -6,10 +6,12 @@ import (
 	parser "github.com/ironpark/genpig/internal/parser"
 	"github.com/ironpark/genpig/internal/templates"
 	"github.com/samber/lo"
+	"log"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
+	"text/template"
 )
 
 func main() {
@@ -17,9 +19,19 @@ func main() {
 	if err != nil {
 		return
 	}
+
 	currentGoFile := filepath.Join(dir, os.Getenv("GOFILE"))
+	//currentGoFile = "/Users/ironpark/Documents/Project/Personal/genpig-example/conf/config.go"
 	targetStruct := flag.String("struct", "", "struct name for generation")
 	flag.Parse()
+
+	if currentGoFile == "" {
+		log.Println("GOFILE environment value is not set")
+		return
+	}
+	if *targetStruct == "" {
+		log.Println("-struct is required flag")
+	}
 	modPath, file, err := parser.GetModule(currentGoFile)
 	if err != nil {
 		return
@@ -27,7 +39,7 @@ func main() {
 
 	moduleName := file.Module.Syntax.Token[1]
 	relPath, _ := filepath.Rel(filepath.Dir(modPath), filepath.Dir(currentGoFile))
-	fmt.Println(relPath, moduleName)
+	basePackageName := filepath.Join(moduleName, relPath)
 	piggyDir := filepath.Dir(currentGoFile)
 	fileName := filepath.Base(currentGoFile)
 	piggyBaseFileName := strings.TrimSuffix(fileName, filepath.Ext(fileName)) + "_gen.go"
@@ -68,7 +80,7 @@ func main() {
 	})
 
 	genPath := filepath.Join(piggyDir, piggyBaseFileName)
-	err = PiggyBaseGenerate(genPath, map[string]any{
+	err = TemplateGenerate(genPath, map[string]any{
 		"Imports":               configStruct.Dependencies(),
 		"PackageName":           goFile.PackageName,
 		"OriginalStructPackage": filepath.Join(moduleName, relPath),
@@ -83,39 +95,31 @@ func main() {
 		"ConfigMerge":           configMerge,
 		"ConfigPaths":           configPaths,
 		"ConfigNames":           configNames,
-	})
+	}, templates.PiggyBaseTmpl)
 	if err == nil {
 		exec.Command("go", "fmt", genPath).Run()
 	}
 	genPath = filepath.Join(piggyDir, "piggy", "piggy_gen.go")
-	err = PiggyGenerate(genPath, map[string]any{
-		"Fields": configStruct.NotEmbeddingFields(),
-	})
+	err = TemplateGenerate(genPath, map[string]any{
+		"Fields":      configStruct.NotEmbeddingFields(),
+		"BasePackage": basePackageName,
+	}, templates.PiggyTmpl)
 	if err == nil {
 		exec.Command("go", "fmt", genPath).Run()
 	}
 }
 
-func PiggyBaseGenerate(path string, params map[string]any) error {
+func TemplateGenerate(path string, params map[string]any, tmpl *template.Template) error {
+	err := os.MkdirAll(filepath.Dir(path), 0755)
+	if err != nil {
+		return err
+	}
 	f, err := os.OpenFile(path, os.O_CREATE|os.O_TRUNC|os.O_RDWR, os.ModePerm)
 	if err != nil {
 		return err
 	}
 	defer f.Close()
-	err = templates.PiggyBase(f, params)
-	if err != nil {
-		return err
-	}
-	return nil
-}
-
-func PiggyGenerate(path string, params map[string]any) error {
-	f, err := os.OpenFile(path, os.O_CREATE|os.O_TRUNC|os.O_RDWR, os.ModePerm)
-	if err != nil {
-		return err
-	}
-	defer f.Close()
-	err = templates.Piggy(f, params)
+	err = tmpl.Execute(f, params)
 	if err != nil {
 		return err
 	}
