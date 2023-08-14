@@ -10,78 +10,78 @@ import (
 )
 
 {{if .WithSingleton}}
-var pggInstance *Piggy
-var pggOnce sync.Once
+    var pggInstance *piggy
+    var pggOnce sync.Once
 {{end}}
 
 {{if .HasJsonTag}}
-var _  json.Marshaler = (*Piggy)(nil)
-var _  json.Unmarshaler = (*Piggy)(nil)
+    var _  json.Marshaler = (*piggy)(nil)
+    var _  json.Unmarshaler = (*piggy)(nil)
 {{end}}
-type Piggy struct {
+type piggy struct {
 {{if .WithThreadSafe}}    lock sync.RWMutex{{end}}
-    cfg {{.OriginalStructName}}
+cfg {{.OriginalStructName}}
 }
 
 {{if .WithSingleton}}
-func GetInstance() *Piggy {
+    func getInstance() *piggy {
     pggOnce.Do(func() {
-        pggInstance = &Piggy{}
+    pggInstance = &piggy{}
     })
     return pggInstance
-}
+    }
 {{end}}
 {{range .Fields }}
     {{if $root.WithSetter}}
         {{if $root.WithThreadSafe}}
-            func (pig *Piggy) Set{{.Name}}(value {{.Type}}){
-                pig.lock.Lock()
-                defer pig.lock.Unlock()
-                pig.cfg.{{.Name}} = value
+            func (pig *piggy) Set{{.Name}}(value {{.Type}}){
+            pig.lock.Lock()
+            defer pig.lock.Unlock()
+            pig.cfg.{{.Name}} = value
             }
         {{else}}
-            func (pig *Piggy) Set{{.Name}}(value {{.Type}}){
-                pig.cfg.{{.Name}} = value
+            func (pig *piggy) Set{{.Name}}(value {{.Type}}){
+            pig.cfg.{{.Name}} = value
             }
         {{end}}
     {{end}}
 
     {{if $root.WithThreadSafe}}
-        func (pig *Piggy) {{.Name}}() {{.Type}} {
-            pig.lock.RLock()
-            defer pig.lock.RUnlock()
-            return pig.cfg.{{.Name}}
+        func (pig *piggy) {{.Name}}() {{.Type}} {
+        pig.lock.RLock()
+        defer pig.lock.RUnlock()
+        return pig.cfg.{{.Name}}
         }
     {{else}}
-        func (pig *Piggy) {{.Name}}() {{.Type}} {
-            return pig.cfg.{{.Name}}
+        func (pig *piggy) {{.Name}}() {{.Type}} {
+        return pig.cfg.{{.Name}}
         }
     {{end}}
 {{end}}
 
 {{if $root.WithThreadSafe}}
-    func (pig *Piggy) Snapshot() {{.OriginalStructName}} {
-        pig.lock.RLock()
-        defer pig.lock.RUnlock()
-        return pig.cfg
+    func (pig *piggy) Snapshot() {{.OriginalStructName}} {
+    pig.lock.RLock()
+    defer pig.lock.RUnlock()
+    return pig.cfg
     }
 {{else}}
-    func (pig *Piggy) Snapshot() {{.OriginalStructName}} {
-        return pig.cfg
+    func (pig *piggy) Snapshot() {{.OriginalStructName}} {
+    return pig.cfg
     }
 {{end}}
 
 {{if .HasJsonTag}}
-    func (pig *Piggy) MarshalJSON() ([]byte, error) {
-       return json.Marshal(pig.cfg)
+    func (pig *piggy) MarshalJSON() ([]byte, error) {
+    return json.Marshal(pig.cfg)
     }
 
-    func (pig *Piggy) UnmarshalJSON(bytes []byte) error {
-        return json.Unmarshal(bytes, &pig.cfg)
+    func (pig *piggy) UnmarshalJSON(bytes []byte) error {
+    return json.Unmarshal(bytes, &pig.cfg)
     }
 {{end}}
 
-func (pig *Piggy) Load(){
+func (pig *piggy) Load(){
 {{if .HasJsonTag}}searchDirs := []string{ {{.ConfigPaths}} }
 fileNames := []string{ {{.ConfigNames}} }
 // Default Values

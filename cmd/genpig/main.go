@@ -23,8 +23,8 @@ func main() {
 	currentGoFile := filepath.Join(dir, os.Getenv("GOFILE"))
 	targetStruct := flag.String("struct", "", "struct name for generation")
 	flag.Parse()
-	currentGoFile = "/Users/ironpark/Documents/Project/Personal/genpig-example/conf/config.go"
-	*targetStruct = "Config"
+	//currentGoFile = "/Users/ironpark/Documents/Project/Personal/genpig-example/conf/config.go"
+	//*targetStruct = "Config"
 	if currentGoFile == "" {
 		log.Println("GOFILE environment value is not set")
 		return
@@ -103,8 +103,9 @@ func main() {
 	if err == nil {
 		exec.Command("go", "fmt", genPath).Run()
 	}
-	genPath = filepath.Join(piggyDir, "piggy", "piggy_gen.go")
+	genPath = filepath.Join(piggyDir, "piggy_gen.go")
 	err = TemplateGenerate(genPath, map[string]any{
+		"PackageName":     goFile.PackageName,
 		"Fields":          configStruct.Fields,
 		"BasePackage":     basePackagePath,
 		"BasePackageName": relPath,
