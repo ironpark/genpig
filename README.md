@@ -1,5 +1,5 @@
 ## GenPig
-**GenPig** is a configuration management package based on generate.
+Experimental configuration package for typesafety-obsessed gopher
 
 > This package is currently in a very early stage. There may be unexpected bugs or behavior.
  
@@ -19,6 +19,8 @@ func init() {
 }
 ```
 This is an intentional design decision. You can do the same thing with comments or struct tags, but this approach allows the programmer to autocomplete the code and get help from the compiler.
+### Use your own package name 
+Genpig generates configuration management logic by referencing the package name in an automatically generated location.
 
 ## Example
 ```go
@@ -33,17 +35,21 @@ func init() {
 	genpig.SetConfigNames("myconfig")
 }
 
+type Database struct {
+	Host     string `env:"DB_SERVER_IP"`
+	Port     int    `env:"DB_PORT"`
+	User     string `env:"DB_USER"`
+	Password string `env:"DB_PW"`
+}
+
+type Server struct {
+	Host string `json:"ip" env:"SERVER_IP"`
+	Port int    `json:"port" env:"PORT"`
+}
+
 //go:generate genpig -struct Config
 type Config struct {
-	Database struct {
-		Host     string `env:"DB_SERVER_IP" json:"ip"`
-		Port     int    `env:"DB_PORT" json:"port"`
-		User     string `env:"DB_USER" json:"user"`
-		Password string `env:"DB_PW" json:"password"`
-	} `json:"database"`
-	Server struct {
-		Host string `json:"ip" env:"SERVER_IP"`
-		Port int    `json:"port" env:"PORT"`
-	} `json:"server"`
+	MainDB Database
+	Server `json:"server"`
 }
 ```
