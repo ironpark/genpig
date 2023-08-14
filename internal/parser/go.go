@@ -1,6 +1,7 @@
 package parser
 
 import (
+	"github.com/samber/lo"
 	"go/ast"
 	"go/parser"
 	"go/token"
@@ -22,6 +23,7 @@ func ParseGoFile(path string) (file GoFile) {
 	}
 	file.PackageName = node.Name.Name
 	imports := NewImports(node.Imports)
+	//top-level declarations parsing
 	for i := range node.Decls {
 		switch typedNode := node.Decls[i].(type) {
 		case *ast.GenDecl:
@@ -47,6 +49,22 @@ func ParseGoFile(path string) (file GoFile) {
 					exprStmt, ok := list.(*ast.ExprStmt)
 					if ok {
 						file.Init.FuncCalls = append(file.Init.FuncCalls, NewFunctionCall(exprStmt, imports))
+					}
+				}
+			}
+		}
+	}
+
+	for _, st := range file.Structs {
+		for _, field := range st.Fields {
+			if field.IsNotPrimitiveType() && field.Package == nil {
+				typeStruct, ok := lo.Find(file.Structs, func(item *Struct) bool {
+					return item.Name == field.Type
+				})
+				if ok {
+					field.Struct = typeStruct
+					if field.Name == "" {
+						field.Name = field.Type
 					}
 				}
 			}

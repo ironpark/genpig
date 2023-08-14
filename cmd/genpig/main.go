@@ -21,10 +21,10 @@ func main() {
 	}
 
 	currentGoFile := filepath.Join(dir, os.Getenv("GOFILE"))
-	//currentGoFile = "/Users/ironpark/Documents/Project/Personal/genpig-example/conf/config.go"
 	targetStruct := flag.String("struct", "", "struct name for generation")
 	flag.Parse()
-
+	currentGoFile = "/Users/ironpark/Documents/Project/Personal/genpig-example/conf/config.go"
+	*targetStruct = "Config"
 	if currentGoFile == "" {
 		log.Println("GOFILE environment value is not set")
 		return
@@ -39,7 +39,7 @@ func main() {
 
 	moduleName := file.Module.Syntax.Token[1]
 	relPath, _ := filepath.Rel(filepath.Dir(modPath), filepath.Dir(currentGoFile))
-	basePackageName := filepath.Join(moduleName, relPath)
+	basePackagePath := filepath.Join(moduleName, relPath)
 	piggyDir := filepath.Dir(currentGoFile)
 	fileName := filepath.Base(currentGoFile)
 	piggyBaseFileName := strings.TrimSuffix(fileName, filepath.Ext(fileName)) + "_gen.go"
@@ -62,7 +62,8 @@ func main() {
 			configNames = fc.ArgString()
 		}
 	}
-	configMerge := lo.Map(configStruct.UnWarpedFields(""), func(field parser.Field, index int) string {
+
+	configMerge := lo.Map(configStruct.UnWarpedFields(), func(field *parser.Field, index int) string {
 		values := lo.Map(field.Tags, func(tag parser.Tag, index int) string {
 			if tag.Key == "env" {
 				envFunction := "os.Getenv"
@@ -89,10 +90,9 @@ func main() {
 		"PackageName":           goFile.PackageName,
 		"OriginalStructPackage": filepath.Join(moduleName, relPath),
 		"OriginalStructName":    *targetStruct,
-		"Fields":                configStruct.NotEmbeddingFields(),
+		"Fields":                configStruct.Fields,
 		"WithThreadSafe":        true,
 		"WithSingleton":         true,
-		"WithSetter":            configStruct.OptionCheck("genpig.Setter"),
 		"HasJsonTag":            configStruct.TagExist("json"),
 		"HasYamlTag":            configStruct.TagExist("yaml"),
 		"HasYamlToml":           configStruct.TagExist("toml"),
@@ -105,12 +105,13 @@ func main() {
 	}
 	genPath = filepath.Join(piggyDir, "piggy", "piggy_gen.go")
 	err = TemplateGenerate(genPath, map[string]any{
-		"Fields":      configStruct.NotEmbeddingFields(),
-		"BasePackage": basePackageName,
+		"Fields":          configStruct.Fields,
+		"BasePackage":     basePackagePath,
+		"BasePackageName": relPath,
 	}, templates.PiggyTmpl)
-	if err == nil {
-		exec.Command("go", "fmt", genPath).Run()
-	}
+	//if err == nil {
+	//	exec.Command("go", "fmt", genPath).Run()
+	//}
 }
 
 func TemplateGenerate(path string, params map[string]any, tmpl *template.Template) error {
